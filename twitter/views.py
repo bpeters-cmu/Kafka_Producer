@@ -1,6 +1,5 @@
 from django.shortcuts import render
 import tweepy
-from .models import Topic
 from twitter.forms import TopicForm
 from django.http import HttpResponse, HttpResponseRedirect
 from .twitter_handler import twitter_access
