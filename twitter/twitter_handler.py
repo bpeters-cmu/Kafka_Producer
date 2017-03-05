@@ -2,6 +2,7 @@ import json
 import tweepy
 from kafka import KafkaProducer
 from tweepy.api import API
+import tweet_dao
 
 
 class twitter_access:
@@ -34,6 +35,7 @@ class MyStreamListener(tweepy.StreamListener):
 		self.producer = KafkaProducer(bootstrap_servers='localhost:9092')
 
 	def on_status(self, status):
+		tweet_dao.insert_tweet(status)
 		if(status.user.location != None):
 			print('location: ' + status.user.location )
 			self.producer.send(self.topic, status.user.location.encode())
