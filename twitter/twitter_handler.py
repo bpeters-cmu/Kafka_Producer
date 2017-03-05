@@ -5,7 +5,7 @@ from tweepy.api import API
 import tweet_dao
 
 
-class twitter_access:
+class TwitterAccess:
 
 	consumer_key = '03pXI5BPKQWodwfkRvlAd2tFD'
 	consumer_secret = 'UCzpOaUZYeXHieaXgPkBKk7kCriz3w8OGZ9MJAXegPcaI7Ij0X'
