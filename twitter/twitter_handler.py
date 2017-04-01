@@ -1,47 +1,46 @@
-import json
-import tweepy
-from kafka import KafkaProducer
-from tweepy.api import API
+import logging
 import tweet_dao
+import tweepy
+from tweepy.api import API
+from kafka import KafkaProducer
 
 
-class TwitterAccess:
+class TwitterAccess(object):
 
-	consumer_key = '03pXI5BPKQWodwfkRvlAd2tFD'
-	consumer_secret = 'UCzpOaUZYeXHieaXgPkBKk7kCriz3w8OGZ9MJAXegPcaI7Ij0X'
+    CONSUMER_KEY = '03pXI5BPKQWodwfkRvlAd2tFD'
+    CONSUMER_SECRET = 'UCzpOaUZYeXHieaXgPkBKk7kCriz3w8OGZ9MJAXegPcaI7Ij0X'
 
-	access_token = '826516692087996416-nvoIh1WMVuTWFmY1M1MnVdaEQfu7Wxt'
-	access_token_secret = '6JJBhRoH97hYE0t6wVCnCsUzRUd2dGV3EA7vAqYJ6ndZi'
+    ACCESS_TOKEN = '826516692087996416-nvoIh1WMVuTWFmY1M1MnVdaEQfu7Wxt'
+    ACCESS_TOKEN_SECRET = '6JJBhRoH97hYE0t6wVCnCsUzRUd2dGV3EA7vAqYJ6ndZi'
 
-	def get_stream(self, topic):
-		
-		
-		auth = tweepy.OAuthHandler(self.consumer_key, self.consumer_secret)
-		auth.set_access_token(self.access_token, self.access_token_secret)
+    @staticmethod
+    def get_stream(topic):
+        auth = tweepy.OAuthHandler(TwitterAccess.CONSUMER_KEY, TwitterAccess.CONSUMER_SECRET)
+        auth.set_access_token(TwitterAccess.ACCESS_TOKEN, TwitterAccess.ACCESS_TOKEN_SECRET)
 
-		api = tweepy.API(auth)
+        api = tweepy.API(auth)
+        stream_listener = MyStreamListener(topic=topic)
 
-		
-		stream_listener = MyStreamListener(t_topic = topic)
-		
-		my_stream = tweepy.Stream(auth = api.auth, listener = stream_listener)
+        my_stream = tweepy.Stream(auth=api.auth, listener=stream_listener)
+        my_stream.filter(track=[topic], async=True)
 
-		my_stream.filter(track=[topic], async=True)
 
 class MyStreamListener(tweepy.StreamListener):
-	def __init__(self, api=None, t_topic=None):
-		self.api = api or API()
-		self.topic = t_topic
-		self.producer = KafkaProducer(bootstrap_servers='localhost:9092')
+    def __init__(self, topic, api=None):
+        self.api = api or API()
+        self.topic = topic
+        self.producer = KafkaProducer(bootstrap_servers='localhost:9092')
 
-	def on_status(self, status):
-		tweet_dao.insert_tweet(status)
-		if(status.user.location != None):
-			print('location: ' + status.user.location )
-			self.producer.send(self.topic, status.user.location.encode())
-		print(status.user.location)
+        logging.basicConfig(level=logging.INFO)
+        self.logger = logging.getLogger(__name__)
 
-	def on_error(self, status_code):
-		if(status_code == 420):
-			return False
-	
+    def on_status(self, status):
+        tweet_dao.insert_tweet(status)
+        if status.user.location is not None:
+            self.logger.debug('location: {}'.format(status.user.location))
+            self.producer.send(self.topic, status.user.location.encode())
+        self.logger.debug(status.user.location)
+
+    def on_error(self, status_code):
+        if status_code == 420:
+            return False
